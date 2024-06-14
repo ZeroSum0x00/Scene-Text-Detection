@@ -1,0 +1,32 @@
+import cv2
+import random
+import numpy as np
+
+from utils.auxiliary_processing import random_range
+from visualizer.visual_image import visual_image
+
+
+class Hue:
+    def __init__(self, delta):
+        if not (-180 <= delta <= 180): raise ValueError("`delta` must be in the closed interval `[-180, 180]`.")
+        self.delta = delta
+
+    def __call__(self, images):
+        images[0][:, :, 0] = (images[0][:, :, 0] + self.delta) % 180.0
+        return images
+    
+
+class RandomHue:
+    def __init__(self, max_delta=18, prob=0.5):
+        if not (0 <= max_delta <= 180): raise ValueError("`max_delta` must be in the closed interval `[0, 180]`.")
+        self.max_delta = max_delta
+        self.prob = prob
+
+    def __call__(self, images):
+        p = np.random.uniform(0,1)
+        
+        if p >= (1.0-self.prob):
+            delta = np.random.randint(-self.max_delta, self.max_delta)
+            self.aug = Hue(delta=delta)
+            images = self.aug(images)
+        return images

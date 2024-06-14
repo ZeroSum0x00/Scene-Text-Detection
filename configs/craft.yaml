@@ -1,0 +1,124 @@
+Dataset:
+    data_dirs: "/home/vbpo-101386/Desktop/TuNIT/Datasets/Object Detection/SynthText"
+    annotation_dirs: "/home/vbpo-101386/Desktop/TuNIT/Datasets/Object Detection/SynthText"
+    # data_dirs: "/home/vbpo-101386/Desktop/TuNIT/Datasets/Object Detection/SynthText_tiny"
+    # annotation_dirs: "/home/vbpo-101386/Desktop/TuNIT/Datasets/Object Detection/SynthText_tiny"
+    data_info:
+        data_type: &data_type 'SynthText'
+        classes: &classes 2
+        color_space: &color_space 'RGB'
+        check_data: False
+        load_memory: False
+        load_bbox: 'character'
+    data_normalizer:
+        norm_type: &norm_type 'divide'
+        norm_mean: null
+        norm_std: null
+    data_augmentation:
+        train:
+            - RandomResizeCrop:
+            - RandomLightIntensity:
+                hue_range: 0.1
+                sat_range: 0.7
+                val_range: 0.4
+            - RandomBrightness:
+                delta_range: [30, 100]
+            - RandomSaltAndPepper:
+                phi_range: 0.1
+            - HalpDownsample:
+        valid:
+        test:
+    data_loader_mode: 1
+
+Model:
+    input_shape: [768, 768, 3]
+    classes: *classes
+    weight_path: './saved_weights/20240528-134953/weights/checkpoint_0300/saved_str_weights'
+    load_weight_type: null
+    Architecture:
+        name: CRAFT
+    Backbone:
+        name: VGG16_backbone
+        include_top: False
+        weights: null
+        pooling: null
+    Perspective_Transfrom:
+        name: GaussianBuilder
+        init_size: 200
+        sigma: 40
+        enlarge_region: [0.5, 0.5]
+        enlarge_affinity: [0.5, 0.5]
+        verbose: False
+            
+Train:
+    mode: 'graph'
+    save_weight_path: &save_weight './saved_weights/'
+    save_weight_type: &save_type 'tf'
+    random_seed: 0
+    num_workers: 0
+    batch_size: 4
+    epoch:
+        start: 0
+        end: &end_epoch 500
+
+Losses:
+    - CRAFTLossV3:
+        coeff: 100
+        negative_ratio: 1
+        num_min_negative: 1000
+
+Optimizer:
+    name: Adam
+    learning_rate: &lr 1.e-04
+    weight_decay: 1.e-5
+
+
+Callbacks:
+    - CRAFTEvaluate:
+        color_space: *color_space
+        data_normalize: *norm_type
+        eval_canvas_size: 960
+        eval_mag_ratio: 1.5
+        eval_text_threshold: 0.85
+        eval_link_threshold: 0.2
+        eval_low_text: 0.5
+        return_poly: False
+        saved_best: True
+        show_frequency: 1
+    - LossHistory:
+        save_best: False
+        save_format: *save_type
+    - ModelCheckpoint:
+        extend_path: 'weights/checkpoint_{epoch:04d}/saved_str_weights'
+        monitor: 'val_loss'
+        save_weights_only: True
+        save_freq: 'epoch'
+        period: 100
+        verbose: 1
+    - TensorBoard:
+        extend_path: 'logs'
+        update_freq: 1
+    - CSVLogger:
+        extend_path: 'summary/train_history.csv'
+        separator: ","
+        append: True
+    - TrainLogger:
+        extend_path: 'logs/training_log.log'
+    - TrainSummary:
+        extend_path: 'summary/train_summary.txt'
+        
+Test:
+    data_infer: './'
+    canvas_size: 2560
+    mag_ratio: 1.
+    min_size: 20
+    text_threshold: 0.7
+    low_text: 0.4
+    link_threshold: 0.4
+    slope_ths: 0.1
+    ycenter_ths: 0.5
+    height_ths: 0.5
+    width_ths: 0.5
+    add_margin: 0.1
+    reformat: True
+    optimal_num_chars: null
